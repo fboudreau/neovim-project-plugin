@@ -26,8 +26,10 @@ The following mappings are used:
 
 Using [Vundle](https://github.com/VundleVim/Vundle.vim)
 
+```vim
 Plugin 'fboudreau/neovim-project-plugin'
 Plugin 'mileszs/ack.vim'
 Plugin 'scrooloose/nerdtree'
+```
 
 
