@@ -71,6 +71,28 @@ Neovim.plugin do |plug|
 
     end
 
+
+    plug.command(:ProjectAckFrom, :nargs => 1) do |nvim, string|
+
+        nvim.message("Hello from From")
+
+        if nvim.get_current_buf.name =~ /NERD_tree_[0-9]+/
+
+            selected_path = nvim.evaluate('g:NERDTreeFileNode.GetSelected().path.str()')
+
+            if File.file?(selected_path)
+                @path = Pathname(selected_path).parent.to_s
+            else
+                @path = Pathname(selected_path).to_s
+            end
+            #@log.info(node[:path])
+        # Run Ack without jumping to the first entry..
+        nvim.command("Ack! #{@proj['ack_options']} #{string}  #{@path}")
+        else
+            message(nvim, "You must select a directory/path in the file and directory explorer before using this command.")
+        end
+    end
+
     #Open an existing project
     plug.command(:ProjectOpen, :complete => :file, :nargs => '*') do |nvim, path|
        
@@ -91,6 +113,7 @@ Neovim.plugin do |plug|
                 # Add some maps
                 nvim.command(":map <c-n> :ProjectShowExplorer<CR>")
                 nvim.command("map <leader>aa :ProjectAck ")
+                nvim.command("map <leader>af :ProjectAckFrom ")
                 nvim.command("map <leader>at :ProjectGenerateTags<CR>")
 
                 # Automatically show the explorers?
