@@ -5,7 +5,7 @@ A neovim plugin to manage projects. The following features are provided:
 
 This plugin essentially keeps track of a given project root directory and uses
 that information to easily create tag files, open NERDtree from the root, 
-automatically search using Ack from the root, etc.
+automatically search using Ack from the root, Ack from a selected path, etc.
 
 The following mappings are used:
 
