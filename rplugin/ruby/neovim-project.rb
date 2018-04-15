@@ -26,7 +26,8 @@ Neovim.plugin do |plug|
       nvim.command("map <leader>ap :ProjectOpen<CR>")
       #nvim.command("autocmd BufReadPost,FileReadPost * :ProjectAddPath")
       #nvim.command("autocmd BufDelete * :ProjectRemovePath")
-      nvim.command("autocmd VimLeave * :mksession! ~/bob")
+      nvim.command("autocmd VimLeave * :ProjectSaveSession")
+      #nvim.command("autocmd VimEnter * :ProjectRestoreSession")
     end
 
     plug.command(:ProjectNew, :nargs => '*', :complete => :file) do |nvim, name, path|
@@ -45,7 +46,7 @@ Neovim.plugin do |plug|
                         "root" => nil,
                         "paths" => [], 
                         "open_browsers" => true,
-                        "ack_options" => "--ignore-file=is:tags --ignore-file=ext:map --ignore-file=ext:d"
+                        "ack_options" => "--ignore-file=is:tags --ignore-file=ext:map --ignore-file=ext:d --ignore-file=ext:cmd"
                     }
 
                     begin
@@ -69,9 +70,88 @@ Neovim.plugin do |plug|
         end
     end
 
-    plug.command(:ProjectMessage, :nargs => 1) do |nvim, string|
-         nvim.message(string + "\n")
+    #Open an existing project
+    plug.command(:ProjectOpen, :complete => :file, :nargs => '*') do |nvim, path|
+       
+        begin
+            # If a path was not specified, look for a project file in the current directory
+            # and upwards.
+            if path.nil?
+                path = find_project_file
+            end
+
+            # If we found a project file, use it.
+            if not path.nil? and File.exists?(path + File::SEPARATOR + '.vim_project')
+
+                # Load the project file
+                proj = YAML.load(File.read(path + File::SEPARATOR + PROJECT_FILE_NAME))
+
+                # Store the absolute path to the project. Doesn't need to be in the file since we can
+                # figure it out based on it's location.
+                proj["root"] = File.absolute_path(path)
+
+                # Add some maps
+                nvim.command("map <c-n> :ProjectShowExplorer<CR>")
+                nvim.command("map <leader>aa :ProjectAck ")
+                nvim.command("map <leader>af :ProjectAckFrom ")
+                nvim.command("map <leader>at :ProjectGenerateTags<CR>")
+                nvim.command("map <leader>ac :ProjectFind<CR>")
+
+                # Git related
+                nvim.command("map <leader>gk :silent !gitk --all &<CR>")
+                nvim.command("map <leader>gg :silent !git gui &<CR>")
+                nvim.command("set sessionoptions=buffers")
+
+                # Automatically show the explorers?
+                
+                if proj["open_browsers"] == true
+                    nvim.command(":ProjectRestoreSession")
+                    nvim.command(":ProjectShowExplorer")
+                    nvim.command(":silent TlistClose")
+                    nvim.command(":Tlist")
+                end
+
+                logger.info("Project file loaded: " + proj.inspect)
+
+
+                # Check if user oppened any files from the command line. If so
+                # add them to the paths list
+                #nvim.list_bufs.each{|buffer|
+                #    nvim.command("ProjectAddPath")
+                #}
+
+                 
+                #proj['paths'].each{|p|
+                #    nvim.command(":badd " + p)
+                #}
+
+            else
+                nvim.message("Project file not found.\n")
+            end
+        rescue Exception => e
+            logger.info("#{e.message}: #{e.backtrace}")
+        end
+
     end
+
+    plug.command(:ProjectSaveSession, :nargs => 0) do |nvim|
+
+        if not proj.nil?
+            nvim.command("mksession! #{proj["root"]}/.vim_project_session")
+        end
+
+    end
+
+    plug.command(:ProjectRestoreSession, :nargs => 0) do |nvim|
+
+        if not proj.nil?
+            nvim.command("source #{proj["root"]}/.vim_project_session")
+        end
+
+    end
+
+
+
 
     # This command will search files using Ack from the root of the project.
     plug.command(:ProjectAck, :nargs => 1) do |nvim, string|
@@ -83,6 +163,10 @@ Neovim.plugin do |plug|
             nvim.message("Project not open. Please use :ProjectOpen.\n")
         end
 
+    end
+
+    plug.command(:ProjectMessage, :nargs => 1) do |nvim, string|
+         nvim.message(string + "\n")
     end
 
 
@@ -158,68 +242,6 @@ Neovim.plugin do |plug|
 
 
     end
-    #Open an existing project
-    plug.command(:ProjectOpen, :complete => :file, :nargs => '*') do |nvim, path|
-       
-        begin
-            # If a path was not specified, look for a project file in the current directory
-            # and upwards.
-            if path.nil?
-                path = find_project_file
-            end
-
-            # If we found a project file, use it.
-            if not path.nil? and File.exists?(path + File::SEPARATOR + '.vim_project')
-
-                # Load the project file
-                proj = YAML.load(File.read(path + File::SEPARATOR + PROJECT_FILE_NAME))
-
-                # Store the absolute path to the project. Doesn't need to be in the file since we can
-                # figure it out based on it's location.
-                proj["root"] = File.absolute_path(path)
-
-                # Add some maps
-                nvim.command("map <c-n> :ProjectShowExplorer<CR>")
-                nvim.command("map <leader>aa :ProjectAck ")
-                nvim.command("map <leader>af :ProjectAckFrom ")
-                nvim.command("map <leader>at :ProjectGenerateTags<CR>")
-                nvim.command("map <leader>ac :ProjectFind<CR>")
-
-                # Git related
-                nvim.command("map <leader>gk :silent !gitk --all<CR>")
-                nvim.command("map <leader>gg :silent !git gui<CR>")
-                nvim.command("set sessionoptions=buffers")
-
-                # Automatically show the explorers?
-                
-                if proj["open_browsers"] == true
-                    nvim.command(":ProjectShowExplorer")
-                    nvim.command(":silent TlistClose")
-                    nvim.command(":Tlist")
-                end
-
-                logger.info("Project file loaded: " + proj.inspect)
-
-
-                # Check if user oppened any files from the command line. If so
-                # add them to the paths list
-                #nvim.list_bufs.each{|buffer|
-                #    nvim.command("ProjectAddPath")
-                #}
-
-                 
-                #proj['paths'].each{|p|
-                #    nvim.command(":badd " + p)
-                #}
-
-            else
-                nvim.message("Project file not found.\n")
-            end
-        rescue Exception => e
-            logger.info("#{e.message}: #{e.backtrace}")
-        end
-
-    end
 
     plug.command(:ProjectGenerateTags, :nargs => 0){|nvim|
         
@@ -259,7 +281,9 @@ Neovim.plugin do |plug|
 
     plug.command(:ProjectAddPath, :nargs => '?', :complete => :file){|nvim, path|
 
-        
+
+        logger.info("ProjectAddPath called")
+
         if not proj.nil?
             
             if path.nil?
