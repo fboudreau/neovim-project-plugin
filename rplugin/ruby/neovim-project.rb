@@ -4,7 +4,7 @@ require 'pathname'
 require 'neovim'
 
 # Dependencies
-# find
+# find linux utility
 # NERDTree
 # ack and vim plugin Ack
 # ctags
@@ -34,45 +34,47 @@ Neovim.plugin do |plug|
 
         if name.nil? or path.nil?
             nvim.message("Both project name and path must be specified\n") 
-        else
+            name = 'no_name'
+            path = './'
+        end
 
-            if File.exists?(path)
-                if not File.exist?(path + File::SEPARATOR + PROJECT_FILE_NAME)
+        if File.exists?(path)
+            if not File.exist?(path + File::SEPARATOR + PROJECT_FILE_NAME)
 
-                    # populate with default information.
-                    proj = {
-                        "version" => "1.0.0",
-                        "name" => name, 
-                        "root" => nil,
-                        "paths" => [], 
-                        "open_browsers" => true,
-                        "ack_options" => "--ignore-file=is:tags --ignore-file=ext:map --ignore-file=ext:d --ignore-file=ext:cmd"
+                # populate with default information.
+                proj = {
+                    "version" => "1.0.0",
+                    "name" => name, 
+                    "root" => nil,
+                    "paths" => [], 
+                    "open_browsers" => true,
+                    "ack_options" => "--ignore-file=is:tags --ignore-file=ext:map --ignore-file=ext:d --ignore-file=ext:cmd"
+                }
+
+                begin
+                    File.open(path + File::SEPARATOR + PROJECT_FILE_NAME, "a" ){|f|
+                        f.write(proj.to_yaml)
                     }
 
-                    begin
-                        File.open(path + File::SEPARATOR + PROJECT_FILE_NAME, "a" ){|f|
-                            f.write(proj.to_yaml)
-                        }
+                    nvim.command(":ProjectGenerateTags")
+                    nvim.command(":ProjectOpen")
 
-                        nvim.command(":ProjectGenerateTags")
-                        nvim.command(":ProjectOpen")
-
-                    rescue Exception => e
-                        nvim.message("Unable to create project file: #{e.message}\n")
-                        log.error(e.message + ": " + e.backtrace.inspect)
-                    end
-                else
-                    nvim.message("Project already exists.\n")
+                rescue Exception => e
+                    nvim.message("Unable to create project file: #{e.message}\n")
+                    log.error(e.message + ": " + e.backtrace.inspect)
                 end
             else
-                nvim.message("Directory #{path} does not exist. Please specify an existing directory\n")
+                nvim.message("Project already exists.\n")
             end
+        else
+            nvim.message("Directory #{path} does not exist. Please specify an existing directory\n")
         end
     end
 
     #Open an existing project
     plug.command(:ProjectOpen, :complete => :file, :nargs => '*') do |nvim, path|
        
+
         begin
             # If a path was not specified, look for a project file in the current directory
             # and upwards.
@@ -92,6 +94,7 @@ Neovim.plugin do |plug|
 
                 # Add some maps
                 nvim.command("map <c-n> :ProjectShowExplorer<CR>")
+                nvim.command("map <leader>nt :NERDTreeToggle<CR>")
                 nvim.command("map <leader>aa :ProjectAck ")
                 nvim.command("map <leader>af :ProjectAckFrom ")
                 nvim.command("map <leader>at :ProjectGenerateTags<CR>")
@@ -111,6 +114,7 @@ Neovim.plugin do |plug|
                     nvim.command(":Tlist")
                 end
 
+                logger.info("global: #{nvim.get_var("project_file_name")}")
                 logger.info("Project file loaded: " + proj.inspect)
 
 
@@ -125,6 +129,8 @@ Neovim.plugin do |plug|
                 #    nvim.command(":badd " + p)
                 #}
 
+                logger.info("See proj: #{see_proj.call}")
+                
             else
                 nvim.message("Project file not found.\n")
             end
@@ -134,10 +140,20 @@ Neovim.plugin do |plug|
 
     end
 
+    plug.command(:ProjectBuild, :nargs => '*') do | nvim, args|
+        if not proj.nil?
+            nvim.command("make -C " + proj["root"] + " " + proj["make_options"] + " " + args)
+        else
+            nvim.message("Project not open. Please use :ProjectOpen.\n")
+        end
+    end
+
     plug.command(:ProjectSaveSession, :nargs => 0) do |nvim|
 
         if not proj.nil?
             nvim.command("mksession! #{proj["root"]}/.vim_project_session")
+        else
+            nvim.message("Project not open. Please use :ProjectOpen.\n")
         end
 
     end
@@ -145,7 +161,9 @@ Neovim.plugin do |plug|
     plug.command(:ProjectRestoreSession, :nargs => 0) do |nvim|
 
         if not proj.nil?
-            nvim.command("source #{proj["root"]}/.vim_project_session")
+            nvim.command("source #{proj["root"]}/.vim_project_session") if File.exists?("#{proj["root"]}/.vim_project_session")
+        else
+            nvim.message("Project not open. Please use :ProjectOpen.\n")
         end
 
     end
@@ -352,6 +370,11 @@ Neovim.plugin do |plug|
     end
 
 
+
+
+    see_proj = lambda do
+        proj["root"]
+    end
 
     private
 
