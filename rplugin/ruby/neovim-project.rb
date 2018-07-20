@@ -32,11 +32,10 @@ Neovim.plugin do |plug|
 
     plug.command(:ProjectNew, :nargs => '*', :complete => :file) do |nvim, name, path|
 
-        if name.nil? or path.nil?
-            nvim.message("Both project name and path must be specified\n") 
-            name = 'no_name'
-            path = './'
-        end
+
+        # Defaults if user does not specify these.
+        name = 'no_name' if name.nil?
+        path = './' if path.nil?
 
         if File.exists?(path)
             if not File.exist?(path + File::SEPARATOR + PROJECT_FILE_NAME)
