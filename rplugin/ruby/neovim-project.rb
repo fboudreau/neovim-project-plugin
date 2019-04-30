@@ -5,7 +5,7 @@ require 'neovim'
 
 # Dependencies
 # find linux utility
-# NERDTree
+# Ranger & bclose
 # ack and vim plugin Ack
 # ctags
 # git, gitk, git gui
@@ -24,14 +24,13 @@ Neovim.plugin do |plug|
     # ProjectOpen.
     plug.autocmd(:VimEnter) do |nvim|
       nvim.command("map <leader>ap :ProjectOpen<CR>")
-      #nvim.command("autocmd BufReadPost,FileReadPost * :ProjectAddPath")
+      nvim.command("autocmd BufReadPost,FileReadPost * :ProjectAddPath")
       #nvim.command("autocmd BufDelete * :ProjectRemovePath")
       nvim.command("autocmd VimLeave * :ProjectSaveSession")
       #nvim.command("autocmd VimEnter * :ProjectRestoreSession")
     end
 
     plug.command(:ProjectNew, :nargs => '*', :complete => :file) do |nvim, name, path|
-
 
         # Defaults if user does not specify these.
         name = 'no_name' if name.nil?
@@ -92,8 +91,8 @@ Neovim.plugin do |plug|
                 proj["root"] = File.absolute_path(path)
 
                 # Add some maps
-                nvim.command("map <c-n> :ProjectShowExplorer<CR>")
-                nvim.command("map <leader>nt :NERDTreeToggle<CR>")
+                nvim.command("map <c-i> :ProjectShowExplorer<CR>")
+                nvim.command("map <c-n> :Ranger<CR>")
                 nvim.command("map <leader>aa :ProjectAck ")
                 nvim.command("map <leader>af :ProjectAckFrom ")
                 nvim.command("map <leader>at :ProjectGenerateTags<CR>")
@@ -108,7 +107,6 @@ Neovim.plugin do |plug|
                 
                 if proj["open_browsers"] == true
                     nvim.command(":ProjectRestoreSession")
-                    nvim.command(":ProjectShowExplorer")
                     nvim.command(":silent TlistClose")
                     nvim.command(":Tlist")
                 end
@@ -188,32 +186,21 @@ Neovim.plugin do |plug|
 
 
     # This comman will search files using Ack from the selected location in the NERDtree
-    plug.command(:ProjectAckFrom, :nargs => 1) do |nvim, string|
+    plug.command(:ProjectAckFrom, :nargs => '*') do |nvim, path, string|
 
         if not proj.nil?
-            # The user has to be in the NERDtree buffer to use this command.
-            # This command needs to know which node is selected in the tree.
-            if nvim.get_current_buf.name =~ /NERD_tree_[0-9]+/
 
-                selected_path = nvim.evaluate('g:NERDTreeFileNode.GetSelected().path.str()')
-
-                # if a file is selected, we will search from it's parent directory. Otherwise,
-                # we will search from the selected directory
-                if File.file?(selected_path)
-                    @path = Pathname(selected_path).parent.to_s
-                else
-                    @path = Pathname(selected_path).to_s
-                end
-
-                # Run Ack without jumping to the first entry. That's what the bang (!) is for. 
-                nvim.command("Ack! #{proj['ack_options']} #{string}  #{@path}")
-
+            # if a file is selected, we will search from it's parent directory. Otherwise,
+            # we will search from the selected directory
+            if File.file?(path)
+                @path = Pathname(path).parent.to_s
             else
-                # Most unfortunate, this. Can't do things like ctrl-r ctrl-w, for example. 
-                # TODO: Is there a away to get at the selected node from another buffer?
-                nvim.message("You must select a path in the file and directory explorer before using this command.\n")
+                @path = Pathname(path).to_s
             end
 
+            # Run Ack without jumping to the first entry. That's what the bang (!) is for. 
+            nvim.command("Ack! #{proj['ack_options']} #{string}  #{@path}")
+            
         else
             nvim.message("Project not open. Please use :ProjectOpen.\n")
         end
@@ -231,28 +218,18 @@ Neovim.plugin do |plug|
     plug.command(:ProjectFindFrom, :complete => :file, :nargs => '*') do |nvim, path|
 
         if not proj.nil?
-            # The user has to be in the NERDtree buffer to use this command.
-            # This command needs to know which node is selected in the tree.
-            if nvim.get_current_buf.name =~ /NERD_tree_[0-9]+/
 
-                selected_path = nvim.evaluate('g:NERDTreeFileNode.GetSelected().path.str()')
-
-                # if a file is selected, we will search from it's parent directory. Otherwise,
-                # we will search from the selected directory
-                if File.file?(selected_path)
-                    @path = Pathname(selected_path).parent.to_s
-                else
-                    @path = Pathname(selected_path).to_s
-                end
-
-                # Run Ack without jumping to the first entry. That's what the bang (!) is for. 
-                nvim.command("CommandT #{@path}")
-
+            # if a file is selected, we will search from it's parent directory. Otherwise,
+            # we will search from the selected directory
+            if File.file?(path)
+                @path = Pathname(path).parent.to_s
             else
-                # Most unfortunate, this. Can't do things like ctrl-r ctrl-w, for example. 
-                # TODO: Is there a away to get at the selected node from another buffer?
-                nvim.message("You must select a path in the file and directory explorer before using this command.\n")
+                @path = Pathname(path).to_s
             end
+
+            # Run Ack without jumping to the first entry. That's what the bang (!) is for. 
+            nvim.command("CommandT #{@path}")
+
         else
             nvim.message("Project not open. Please use :ProjectOpen.\n")
         end
@@ -341,8 +318,8 @@ Neovim.plugin do |plug|
 
     plug.command(:ProjectShowExplorer, nargs: 0) do |nvim|
         if not proj.nil?
-            nvim.command(":NERDTreeClose")
-            nvim.command(":NERDTree #{proj["root"]}")
+            #nvim.command(":Ranger")
+            nvim.command(":call OpenRangerIn(\"#{proj["root"]}\", \"edit\")")
         else
             nvim.message("Project not open. Please use :ProjectOpen.\n")
         end

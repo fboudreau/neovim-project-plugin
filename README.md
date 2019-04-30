@@ -18,7 +18,8 @@ The following mappings are used:
 
 - neovim +ruby
 - Plugin 'mileszs/ack.vim'
-- Plugin 'scrooloose/nerdtree'
+- Plugin 'rbgrouleff/bclose.vim'
+- Plugin 'francoiscabrol/ranger.vim'
 - ctags
 - find
 
@@ -29,7 +30,8 @@ Using [Vundle](https://github.com/VundleVim/Vundle.vim)
 ```vim
 Plugin 'fboudreau/neovim-project-plugin'
 Plugin 'mileszs/ack.vim'
-Plugin 'scrooloose/nerdtree'
+Plugin 'rbgrouleff/bclose.vim'
+Plugin 'francoiscabrol/ranger.vim'
 ```
 
 
